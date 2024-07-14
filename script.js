@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const container = document.querySelector(".carousel__container");
     const items = Array.from(document.querySelectorAll(".carousel__item"));
-    const videoPlayer = new Plyr('#videoPlayer');
+    const videoPlayer = videojs('videoPlayer');
     let currentIndex = 0;
     let transitioning = false;
     let startX = 0;
@@ -35,15 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     const playVideo = (videoSrc) => {
-        videoPlayer.source = {
-            type: 'video',
-            sources: [
-                {
-                    src: videoSrc,
-                    type: 'application/x-mpegURL',
-                },
-            ],
-        };
+        videoPlayer.src({ type: 'application/x-mpegURL', src: videoSrc });
         videoPlayer.play();
     };
 
