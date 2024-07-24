@@ -1,78 +1,121 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const container = document.querySelector(".carousel__container");
-    const items = Array.from(document.querySelectorAll(".carousel__item"));
-    const videoPlayer = videojs('videoPlayer');
-    let currentIndex = 0;
-    let transitioning = false;
-    let startX = 0;
-    let currentTranslate = 0;
+const video = document.getElementById('video');
+const videoContainer = document.getElementById('video-container');
+const playPauseButton = document.getElementById('play-pause');
+const fullscreenButton = document.getElementById('fullscreen-button');
+const controls = document.getElementById('controls');
+const canvas = document.getElementById('jellyfish-canvas');
+const ctx = canvas.getContext('2d');
 
-    // Clonar elementos para el efecto infinito
-    const firstClone = items[0].cloneNode(true);
-    const lastClone = items[items.length - 1].cloneNode(true);
-    
-    container.appendChild(firstClone);
-    container.insertBefore(lastClone, items[0]);
+let controlsTimeout;
 
-    const updateCarousel = () => {
-        if (transitioning) return;
-        transitioning = true;
-        container.style.transition = 'transform 0.5s ease-in-out';
-        container.style.transform = `translateX(-${(currentIndex + 1) * (220)}px)`; // Ajuste de ancho de ítem con espacio
+function togglePlayPause() {
+    if (video.paused) {
+        video.play();
+        playPauseButton.textContent = 'Pausar';
+        hideControls();
+    } else {
+        video.pause();
+        playPauseButton.textContent = 'Reproducir';
+    }
+}
 
-        setTimeout(() => {
-            if (currentIndex === items.length) {
-                currentIndex = 0;
-                container.style.transition = 'none';
-                container.style.transform = `translateX(-${(currentIndex + 1) * (220)}px)`; // Ajuste de ancho de ítem con espacio
-            } else if (currentIndex === -1) {
-                currentIndex = items.length - 1;
-                container.style.transition = 'none';
-                container.style.transform = `translateX(-${(currentIndex + 1) * (220)}px)`; // Ajuste de ancho de ítem con espacio
-            }
-            transitioning = false;
-        }, 500);
-    };
-
-    const playVideo = (videoSrc) => {
-        videoPlayer.src({ type: 'application/x-mpegURL', src: videoSrc });
-        videoPlayer.play();
-    };
-
-    container.addEventListener("touchstart", (e) => {
-        startX = e.touches[0].clientX;
-        container.style.transition = 'none';
-        currentTranslate = -((currentIndex + 1) * (220)); // Ajuste de ancho de ítem con espacio
-    });
-
-    container.addEventListener("touchmove", (e) => {
-        const touch = e.touches[0];
-        const translateX = currentTranslate + (touch.clientX - startX);
-        container.style.transform = `translateX(${translateX}px)`;
-    });
-
-    container.addEventListener("touchend", (e) => {
-        const endX = e.changedTouches[0].clientX;
-        const diffX = endX - startX;
-
-        if (Math.abs(diffX) > 50) {
-            if (diffX > 0) {
-                currentIndex--;
-            } else {
-                currentIndex++;
-            }
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        if (videoContainer.requestFullscreen) {
+            videoContainer.requestFullscreen();
+        } else if (videoContainer.mozRequestFullScreen) { // Firefox
+            videoContainer.mozRequestFullScreen();
+        } else if (videoContainer.webkitRequestFullscreen) { // Chrome, Safari and Opera
+            videoContainer.webkitRequestFullscreen();
+        } else if (videoContainer.msRequestFullscreen) { // IE/Edge
+            videoContainer.msRequestFullscreen();
         }
-
-        updateCarousel();
-    });
-
-    container.addEventListener("click", (e) => {
-        if (e.target.closest(".carousel__item")) {
-            const videoSrc = e.target.closest(".carousel__item").getAttribute("data-video");
-            playVideo(videoSrc);
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
         }
-    });
+    }
+}
 
-    // Iniciar en el primer elemento real
-    container.style.transform = `translateX(-220px)`; // Ajuste de ancho de ítem con espacio
+function hideControls() {
+    controls.classList.add('hidden');
+}
+
+function showControls() {
+    controls.classList.remove('hidden');
+    clearTimeout(controlsTimeout);
+    controlsTimeout = setTimeout(hideControls, 3000); // Ocultar después de 3 segundos
+}
+
+playPauseButton.addEventListener('click', togglePlayPause);
+fullscreenButton.addEventListener('click', toggleFullscreen);
+
+videoContainer.addEventListener('click', (event) => {
+    if (event.target !== playPauseButton && event.target !== fullscreenButton) {
+        togglePlayPause();
+    }
 });
+
+videoContainer.addEventListener('mousemove', showControls);
+videoContainer.addEventListener('touchstart', showControls);
+
+video.addEventListener('play', () => {
+    playPauseButton.textContent = 'Pausar';
+    hideControls();
+});
+
+video.addEventListener('pause', () => {
+    playPauseButton.textContent = 'Reproducir';
+    showControls();
+});
+
+function drawJellyfish(x, y) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x - 30, y + 30, x + 30, y + 30, x, y + 60);
+    ctx.strokeStyle = '#39FF14';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + (i - 4) * 5, y + 60);
+        ctx.lineTo(x + (i - 4) * 5, y + 80 + Math.sin(Date.now() / 200 + i) * 10);
+        ctx.strokeStyle = '#39FF14';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+}
+
+canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawJellyfish(x, y);
+    
+    setTimeout(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }, 500);
+});
+
+function resizeCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Ajustar el canvas cuando se entra o sale del modo pantalla completa
+document.addEventListener('fullscreenchange', resizeCanvas);
+document.addEventListener('webkitfullscreenchange', resizeCanvas);
+document.addEventListener('mozfullscreenchange', resizeCanvas);
+document.addEventListener('MSFullscreenChange', resizeCanvas);
